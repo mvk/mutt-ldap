@@ -145,6 +145,7 @@ CONFIG.add_section('auth')
 CONFIG.set('auth', 'user', '')
 CONFIG.set('auth', 'password', '')
 CONFIG.set('auth', 'gssapi', 'no')
+CONFIG.set('auth', 'keyring', 'no')
 CONFIG.add_section('query')
 CONFIG.set('query', 'filter', '') # only match entries according to this filter
 CONFIG.set('query', 'search-fields', 'cn displayName uid mail') # fields to wildcard search
@@ -199,10 +200,15 @@ class LDAPConnection (object):
             sasl = _ldap_sasl.gssapi()
             self.connection.sasl_interactive_bind_s('', sasl)
         else:
-            self.connection.bind(
-                self.config.get('auth', 'user'),
-                self.config.get('auth', 'password'),
-                _ldap.AUTH_SIMPLE)
+            user = self.config.get('auth', 'user')
+
+            if self.config.getboolean('auth', 'keyring'):
+                import keyring
+                password = keyring.get_password('mutt-ldap', user)
+            else:
+                password = self.config.get('auth', 'password')
+
+            self.connection.bind(user, password, _ldap.AUTH_SIMPLE)
 
     def unbind(self):
         if self.connection is None:
