@@ -19,6 +19,7 @@
 
 "LDAP address searches for Mutt"
 
+import argparse as _argparse
 import codecs as _codecs
 import ConfigParser as _configparser
 import hashlib as _hashlib
@@ -50,10 +51,13 @@ LOG.setLevel(_logging.ERROR)
 
 
 class Config (_configparser.SafeConfigParser):
-    def load(self):
-        config_paths = self._get_config_paths()
+    def load(self, config_path=None):
+        config_paths = config_path and [ config_path ] or self._get_config_paths()
         LOG.info(u'load configuration from {0}'.format(config_paths))
         read_config_paths = self.read(config_paths)
+        if not read_config_paths:
+            LOG.error(u'Loading configuration file failed: {0}'.format(' '.join(config_paths)))
+            _sys.exit(1)
         self._setup_defaults()
         LOG.info(u'loaded configuration from {0}'.format(read_config_paths))
 
@@ -354,15 +358,19 @@ def format_entry(entry):
             # Describes the format mutt expects: address\tname
             yield u'\t'.join(format_columns(m, data))
 
+def parse_args():
+    arg_parser = _argparse.ArgumentParser()
+    arg_parser.add_argument('--config','-c',help='path to configuration file',metavar='path',dest='config')
+    arg_parser.add_argument('query', nargs='+', help='search string')
+
+    return arg_parser.parse_args()
+
 
 if __name__ == '__main__':
-    CONFIG.load()
+    args = parse_args()
+    CONFIG.load(args.config)
 
-    if len(_sys.argv) < 2:
-        LOG.error(u'{0}: no search string given'.format(_sys.argv[0]))
-        _sys.exit(1)
-
-    query = u' '.join(_sys.argv[1:])
+    query = u' '.join(args.query)
 
     connection_class = CONFIG.get_connection_class()
     addresses = []
