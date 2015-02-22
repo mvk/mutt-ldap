@@ -349,40 +349,55 @@ def _decode_query_data(obj):
         return obj
     return unicode(obj, 'utf-8')
 
-def format_columns(address, data):
+def format_columns(address, data, attr_lst):
     yield _decode_query_data(address)
-    yield _decode_query_data(data.get('displayName', data['cn'])[-1])
-    optional_column = CONFIG.get('results', 'optional-column')
+    fullname, opt_fullname, optional_column = attr_lst
+    yield _decode_query_data(data.get(fullname, data[opt_fullname])[-1])
+
     if optional_column in data:
         yield _decode_query_data(data[optional_column][-1])
 
-def format_entry(entry):
-    cn,data = entry
+
+def format_entry(entry, attr_lst=None):
+    cn, data = entry
+    if not attr_lst:
+        attr_lst = [
+            'displayName',
+            'cn',
+            ]
     if 'mail' in data:
         for m in data['mail']:
-            # http://www.mutt.org/doc/manual/manual-4.html#ss4.5
+            # refer to:http://www.mutt.org/doc/manual/manual-4.html#ss4.5
             # Describes the format mutt expects: address\tname
-            yield u'\t'.join(format_columns(m, data))
+            yield u'\t'.join(format_columns(m, data, attr_lst))
 
-def parse_args():
+
+def parse_args(args=None):
     arg_parser = _argparse.ArgumentParser()
-    arg_parser.add_argument('--config','-c',help='path to configuration file',metavar='path',dest='config')
+    arg_parser.add_argument(
+        '-c', '--config',
+        help='path to configuration file',
+        metavar='path',
+        dest='config'
+    )
     arg_parser.add_argument('query', nargs='+', help='search string')
-
-    return arg_parser.parse_args()
+    return arg_parser.parse_args(args=args)
 
 
 if __name__ == '__main__':
-    args = parse_args()
+    args = parse_args(_sys.argv[1:])
     CONFIG.load(args.config)
 
     query = u' '.join(args.query)
 
     connection_class = CONFIG.get_connection_class()
+    attr_lst = CONFIG.get('query', 'search-fields').split(' ')[0:2]
+    optional_column = CONFIG.get('results', 'optional_column', '')
+    attr_lst.append(optional_column)
     addresses = []
     with connection_class() as connection:
         entries = connection.search(query=query)
         for entry in entries:
-            addresses.extend(format_entry(entry))
+            addresses.extend(format_entry(entry, attr_lst=attr_lst))
     print(u'{0} addresses found:'.format(len(addresses)))
     print(u'\n'.join(addresses))
