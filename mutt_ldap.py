@@ -392,7 +392,10 @@ if __name__ == '__main__':
 
     connection_class = CONFIG.get_connection_class()
     attr_lst = CONFIG.get('query', 'search-fields').split(' ')[0:2]
-    optional_column = CONFIG.get('results', 'optional_column', '')
+    optional_column = ''
+    if CONFIG.has_section('results') and \
+        CONFIG.has_option('results', 'optional_column'):
+        optional_column = CONFIG.get('results', 'optional_column')
     attr_lst.append(optional_column)
     addresses = []
     with connection_class() as connection:
