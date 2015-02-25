@@ -352,10 +352,13 @@ def _decode_query_data(obj):
 def format_columns(address, data, attr_lst):
     yield _decode_query_data(address)
     fullname, opt_fullname, optional_column = attr_lst
-    yield _decode_query_data(data.get(fullname, data[opt_fullname])[-1])
+    LOG.debug("fullname: {fullname}; optional: {opt_fullname}; optional_column: {optional_column}".format(**locals()))
+    LOG.debug("data: {data}".format(**locals()))
+
+    yield _decode_query_data(data.get(fullname, data.get(opt_fullname))[-1])
 
     if optional_column in data:
-        yield _decode_query_data(data[optional_column][-1])
+        yield _decode_query_data(data.get(optional_column)[-1])
 
 
 def format_entry(entry, attr_lst=None):
